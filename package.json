@@ -1,0 +1,37 @@
+{
+  "name": "@nano-step/nano-brain-observe",
+  "version": "0.0.0-dev",
+  "description": "Logging reverse proxy for nano-brain: records every agent MCP call to JSONL",
+  "bin": {
+    "nano-brain-observe": "npm/run.js"
+  },
+  "scripts": {
+    "postinstall": "node npm/postinstall.js",
+    "test": "node --test npm/postinstall.test.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nano-step/nano-brain-observe.git"
+  },
+  "keywords": [
+    "nano-brain",
+    "mcp",
+    "observability",
+    "proxy",
+    "coding-agent"
+  ],
+  "author": "nano-step",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "npm/run.js",
+    "npm/postinstall.js",
+    "README.md",
+    "LICENSE"
+  ]
+}

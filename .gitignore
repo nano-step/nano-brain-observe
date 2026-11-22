@@ -1,0 +1,6 @@
+/nano-brain-observe
+/npm/nano-brain-observe
+/npm/nano-brain-observe.exe
+/dist/
+*.jsonl
+node_modules/
