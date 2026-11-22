@@ -87,9 +87,14 @@ Known limitations:
   Fixed (`tags` removed from the counted fields; `impacted`, `chain` and
   `"found": false` added) with tests. Records written before the fix still
   carry the wrong `empty` status for `memory_get`.
-- Distribution: GitHub Actions `ci.yml` (fmt, vet, race tests, cross-build,
-  npm wrapper tests) and `release.yml` (on a `v*` tag: six binaries +
-  SHA256SUMS as a GitHub release, then npm publish of
-  `@nano-step/nano-brain-observe` and the unscoped alias `nano-brain-observe`).
-  The npm package is a thin wrapper that downloads and SHA-256-verifies the
-  binary for the platform.
+- Distribution: `ci.yml` runs on pull requests (fmt, vet, race tests,
+  cross-build, npm wrapper tests). `release.yml` runs on every push to `main`:
+  it computes the version `{YYYY}.{M}.{D*100+N}`, builds six binaries +
+  SHA256SUMS, creates the `v<version>` tag and GitHub release, then publishes
+  `@nano-step/nano-brain-observe` and the unscoped alias `nano-brain-observe`
+  to npm through trusted publishing (OIDC, no token). `[skip-release]` in the
+  commit message skips it. The npm package is a thin wrapper that downloads
+  and SHA-256-verifies the binary for the platform.
+- npm trusted publisher settings (per package, on npmjs.com): organization
+  `nano-step`, repository `nano-brain-observe`, workflow `release.yml`, no
+  environment.
