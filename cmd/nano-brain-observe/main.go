@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/signal"
@@ -46,6 +47,8 @@ func run() error {
 	listen := flag.String("listen", envOr("NANO_BRAIN_OBSERVE_LISTEN", "127.0.0.1:3101"), "address to listen on")
 	upstreamFlag := flag.String("upstream", envOr("NANO_BRAIN_OBSERVE_UPSTREAM", "http://127.0.0.1:3100"), "nano-brain base URL")
 	dirFlag := flag.String("dir", envOr("NANO_BRAIN_OBSERVE_DIR", "~/.nano-brain-observe/logs"), "directory for the JSONL call logs")
+	allowedHosts := flag.String("allowed-hosts", "", "comma-separated exact additional Host names or IPs")
+	unsafeExposeLAN := flag.Bool("unsafe-expose-lan", false, "allow listening on non-loopback interfaces (unauthenticated)")
 	maxResponse := flag.Int("max-response-bytes", maxDefault, "bytes of each response kept in the log")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
@@ -57,6 +60,13 @@ func run() error {
 
 	if *maxResponse <= 0 {
 		return fmt.Errorf("max-response-bytes must be positive, got %d", *maxResponse)
+	}
+	hosts, err := proxy.ParseAllowedHosts(*allowedHosts)
+	if err != nil {
+		return err
+	}
+	if err := checkListen(*listen, *unsafeExposeLAN); err != nil {
+		return err
 	}
 	upstream, err := url.Parse(*upstreamFlag)
 	if err != nil {
@@ -87,7 +97,7 @@ func run() error {
 		return fmt.Errorf("listen: %w", err)
 	}
 	srv := &http.Server{
-		Handler:           proxy.New(proxy.Options{Upstream: upstream, Sink: files, MaxResponseBytes: *maxResponse}),
+		Handler:           proxy.New(proxy.Options{Upstream: upstream, Sink: files, MaxResponseBytes: *maxResponse, AllowedHosts: hosts}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Printf("nano-brain-observe: listening on %s, upstream %s, logging to %s", ln.Addr(), upstream, dir)
@@ -118,6 +128,26 @@ func run() error {
 		err = fmt.Errorf("close sink: %w", cerr)
 	}
 	return err
+}
+
+func checkListen(address string, unsafe bool) error {
+	// Classify the textual host: resolving here and again in net.Listen could
+	// yield different IPs, turning a loopback preflight into a LAN bind.
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return fmt.Errorf("invalid listen address: %w", err)
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 0 || n > 65535 {
+		return fmt.Errorf("invalid listen port %q", port)
+	}
+	ip, ipErr := netip.ParseAddr(host)
+	loopback := strings.EqualFold(host, "localhost") ||
+		ipErr == nil && ip.Zone() == "" && ip.IsLoopback()
+	if !unsafe && !loopback {
+		return fmt.Errorf("listen %s is not loopback; use --unsafe-expose-lan to allow unauthenticated LAN access", address)
+	}
+	return nil
 }
 
 func expandHome(path string) (string, error) {
