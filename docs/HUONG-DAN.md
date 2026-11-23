@@ -45,7 +45,8 @@ nano-brain phải đang chạy ở cổng 3100.
 nano-brain-observe
 ```
 
-Tùy chọn (đặt bằng cờ hoặc biến môi trường):
+Mọi tùy chọn đều có cờ; chỉ những dòng có biến môi trường bên dưới mới
+có thể đặt qua biến môi trường:
 
 | Cờ | Biến môi trường | Mặc định | Ý nghĩa |
 |---|---|---|---|

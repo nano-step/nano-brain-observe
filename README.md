@@ -78,7 +78,8 @@ Vietnamese guide: [docs/HUONG-DAN.md](docs/HUONG-DAN.md).
 
 ## Options
 
-Each option can be set with a flag or an environment variable.
+All options have flags; only those with an environment variable listed below
+can also be set through the environment.
 
 | Flag | Environment variable | Default | Meaning |
 |---|---|---|---|

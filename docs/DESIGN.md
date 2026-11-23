@@ -50,6 +50,11 @@ Implemented, reviewed and installed on the owner's machine: launchd job
 and the Claude Code, Codex, Pi and OpenCode configs point at port 3101 (Devin
 reads its nano-brain entry from `~/.claude.json`, so it follows Claude Code).
 Backups of the edited configs: `<file>.pre-observe-20261122-003726`.
+This is historical installation status, not a current launchd template.
+For the current OpenCode URL and Host guard, the loopback launchd example in
+[AGENTS-SETUP.md](AGENTS-SETUP.md#optional-run-at-login-on-macos) includes
+`--allowed-hosts host.docker.internal`; a non-loopback bind additionally
+requires `--unsafe-expose-lan`.
 
 Agent test after install (measured from the log):
 - Codex and Pi: a real `memory_status` tool call was logged with the agent's client name.

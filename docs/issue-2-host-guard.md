@@ -23,6 +23,9 @@ For agents using `host.docker.internal`, the hostname must be in
 `--allowed-hosts` even if the loopback listener is reachable. Keep that
 listener and omit `--unsafe-expose-lan` when possible; a wider bind requires
 both flags. See `docs/AGENTS-SETUP.md` and `docs/HUONG-DAN.md`.
+The launchd template in `docs/AGENTS-SETUP.md` also includes
+`--allowed-hosts host.docker.internal` for its documented OpenCode URL;
+the historical installation note in `docs/DESIGN.md` points to that template.
 
 ## Evidence
 

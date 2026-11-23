@@ -197,9 +197,11 @@ it is restarted.
 
 ## Optional: run at login on macOS
 
-This is an example only; nothing is installed by this repository. Replace
-the placeholder path with the absolute path of your built binary (launchd
-does not expand `~` or use your shell's `PATH`).
+This is an example only; nothing is installed by this repository. It keeps
+the loopback listener and permits the documented OpenCode URL
+`http://host.docker.internal:3101/mcp`. Replace the placeholder path with
+the absolute path of your built binary (launchd does not expand `~` or use
+your shell's `PATH`).
 
 Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
 
@@ -217,6 +219,8 @@ Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
     <string>127.0.0.1:3101</string>
     <string>--upstream</string>
     <string>http://127.0.0.1:3100</string>
+    <string>--allowed-hosts</string>
+    <string>host.docker.internal</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -232,7 +236,12 @@ Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
 
 The two `/tmp` files receive only the proxy's own diagnostic output. The
 call records still go to `~/.nano-brain-observe/logs`; add `--dir` and an
-absolute path to `ProgramArguments` to change that.
+absolute path to `ProgramArguments` to change that. Omit the two
+`--allowed-hosts` strings if no client uses `host.docker.internal`. If
+containers cannot reach the loopback listener, change `--listen` to an
+appropriate reachable interface and add `<string>--unsafe-expose-lan</string>`
+to `ProgramArguments`; keep `--allowed-hosts` for the OpenCode URL and
+restrict access with a firewall (see [OpenCode](#opencode)).
 
 Load it:
 
