@@ -35,3 +35,38 @@ func TestSameEndpoint(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckListen(t *testing.T) {
+	for _, address := range []string{
+		":3101", "0.0.0.0:3101", "[::]:3101", "192.168.1.5:3101",
+		// Even when this alias resolves to loopback, its text is not a
+		// loopback literal or the special name localhost.
+		"localhost.localdomain:3101", "LOCALHOST.:3101", "127.1:3101",
+		"[::1%lo0]:3101",
+	} {
+		if err := checkListen(address, false); err == nil {
+			t.Errorf("checkListen(%q, false) accepted non-loopback", address)
+		}
+		if err := checkListen(address, true); err != nil {
+			t.Errorf("checkListen(%q, true): %v", address, err)
+		}
+	}
+	for _, address := range []string{
+		"127.0.0.1:3101", "127.42.3.2:0", "[::1]:3101",
+		"localhost:3101", "LOCALHOST:3101",
+	} {
+		if err := checkListen(address, false); err != nil {
+			t.Errorf("checkListen(%q, false): %v", address, err)
+		}
+	}
+	for _, address := range []string{
+		"localhost", "localhost:", "localhost:bad", "localhost:65536",
+		"localhost:-1", "[::1:3101", "::1:3101",
+	} {
+		for _, unsafe := range []bool{false, true} {
+			if err := checkListen(address, unsafe); err == nil {
+				t.Errorf("checkListen(%q, %v) accepted malformed address", address, unsafe)
+			}
+		}
+	}
+}

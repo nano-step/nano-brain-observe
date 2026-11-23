@@ -123,9 +123,18 @@ Revert: set `url` back to `http://localhost:3100/mcp`.
 
 ## OpenCode
 
-If `host.docker.internal` resolves to `127.0.0.1` on the host (check
-`/etc/hosts`) and OpenCode runs on the host, the default loopback `--listen`
-is enough and the rest of this section about widening it does not apply.
+If the agent can reach the proxy through the default loopback listener (for
+example, `host.docker.internal` maps to `127.0.0.1` on the host and OpenCode
+runs on the host), keep the default `--listen` and allow the hostname in the
+agent URL:
+
+```sh
+./nano-brain-observe --allowed-hosts host.docker.internal
+```
+
+Do **not** add `--unsafe-expose-lan` in this case. The flag is needed only
+when binding to a non-loopback interface; without `--allowed-hosts`, the proxy
+rejects `Host: host.docker.internal` with 403 even when the connection succeeds.
 
 Config file: `~/.config/opencode/opencode.json`.
 
@@ -149,20 +158,24 @@ After:
 }
 ```
 
-This agent runs inside a Docker container and reaches the host through
-`host.docker.internal`, not `localhost`. The proxy therefore has to listen
-on an address the container can reach. The default `127.0.0.1:3101` may not
-be reachable from the container; if the agent reports a connection error
-after the switch, start the proxy on a wider address:
+When this agent runs inside a Docker container, it reaches the host through
+`host.docker.internal`, not `localhost`. Try the loopback command above first
+if the container can reach that listener. If it reports a connection error
+(rather than HTTP 403), bind to an address the container can reach:
 
 ```sh
-./nano-brain-observe --listen 0.0.0.0:3101
+./nano-brain-observe --listen 0.0.0.0:3101 \
+  --unsafe-expose-lan --allowed-hosts host.docker.internal
 ```
 
-Security trade-off: with `0.0.0.0` the proxy accepts connections from every
-network interface, so any machine on the local network can call nano-brain
-through it, and those calls (and their responses) end up in your logs. The
-proxy has no authentication. Prefer one of:
+The proxy refuses wildcard or other non-loopback binds without
+`--unsafe-expose-lan`. Use **both** flags for this wider bind.
+`--allowed-hosts` accepts exact DNS names or IPs, not
+ports/wildcards; add the exact hostname used by the container (or its LAN IP
+if it connects by IP). With `0.0.0.0`, the proxy accepts connections from every
+network interface. **It has no authentication**: any machine that can reach the
+port can send an allowed Host header and call nano-brain, including private
+workspace data. Host/Origin checking is not access control. Prefer one of:
 
 - bind to one specific interface address that the container can reach
   instead of `0.0.0.0` (`--listen <interface address>:3101`);
@@ -184,9 +197,11 @@ it is restarted.
 
 ## Optional: run at login on macOS
 
-This is an example only; nothing is installed by this repository. Replace
-the placeholder path with the absolute path of your built binary (launchd
-does not expand `~` or use your shell's `PATH`).
+This is an example only; nothing is installed by this repository. It keeps
+the loopback listener and permits the documented OpenCode URL
+`http://host.docker.internal:3101/mcp`. Replace the placeholder path with
+the absolute path of your built binary (launchd does not expand `~` or use
+your shell's `PATH`).
 
 Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
 
@@ -204,6 +219,8 @@ Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
     <string>127.0.0.1:3101</string>
     <string>--upstream</string>
     <string>http://127.0.0.1:3100</string>
+    <string>--allowed-hosts</string>
+    <string>host.docker.internal</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -219,7 +236,12 @@ Save as `~/Library/LaunchAgents/local.nano-brain-observe.plist`:
 
 The two `/tmp` files receive only the proxy's own diagnostic output. The
 call records still go to `~/.nano-brain-observe/logs`; add `--dir` and an
-absolute path to `ProgramArguments` to change that.
+absolute path to `ProgramArguments` to change that. Omit the two
+`--allowed-hosts` strings if no client uses `host.docker.internal`. If
+containers cannot reach the loopback listener, change `--listen` to an
+appropriate reachable interface and add `<string>--unsafe-expose-lan</string>`
+to `ProgramArguments`; keep `--allowed-hosts` for the OpenCode URL and
+restrict access with a firewall (see [OpenCode](#opencode)).
 
 Load it:
 

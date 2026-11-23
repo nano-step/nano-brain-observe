@@ -45,7 +45,8 @@ nano-brain phải đang chạy ở cổng 3100.
 nano-brain-observe
 ```
 
-Tùy chọn (đặt bằng cờ hoặc biến môi trường):
+Mọi tùy chọn đều có cờ; chỉ những dòng có biến môi trường bên dưới mới
+có thể đặt qua biến môi trường:
 
 | Cờ | Biến môi trường | Mặc định | Ý nghĩa |
 |---|---|---|---|
@@ -53,6 +54,29 @@ Tùy chọn (đặt bằng cờ hoặc biến môi trường):
 | `--upstream` | `NANO_BRAIN_OBSERVE_UPSTREAM` | `http://127.0.0.1:3100` | Địa chỉ nano-brain |
 | `--dir` | `NANO_BRAIN_OBSERVE_DIR` | `~/.nano-brain-observe/logs` | Thư mục chứa log |
 | `--max-response-bytes` | `NANO_BRAIN_OBSERVE_MAX_RESPONSE_BYTES` | `262144` | Giới hạn kích thước response được lưu (256 KiB) |
+| `--allowed-hosts` | — | rỗng | Tên host/IP được phép thêm (khớp chính xác, không gồm cổng) |
+| `--unsafe-expose-lan` | — | tắt | Cho phép lắng nghe ngoài loopback (proxy không có xác thực) |
+
+Nếu OpenCode dùng URL `host.docker.internal` và truy cập được proxy qua
+địa chỉ loopback mặc định, chạy:
+
+```sh
+nano-brain-observe --allowed-hosts host.docker.internal
+```
+
+Không cần `--unsafe-expose-lan` trong trường hợp này. Nếu thiếu
+`--allowed-hosts`, kết nối vẫn có thể thành công nhưng proxy trả HTTP 403.
+Nếu container không kết nối được với địa chỉ loopback, phải mở cổng trên
+giao diện mạng mà container truy cập được; khi đó dùng **cả hai** cờ:
+
+```sh
+nano-brain-observe --listen 0.0.0.0:3101 \
+  --unsafe-expose-lan --allowed-hosts host.docker.internal
+```
+
+Proxy không có xác thực: khi mở cổng ra LAN, máy khác có thể giả mạo Host
+được cho phép để gọi nano-brain. Ưu tiên bind một giao diện cụ thể và chặn
+truy cập bằng tường lửa; xem [AGENTS-SETUP.md](AGENTS-SETUP.md#opencode).
 
 Muốn proxy tự chạy khi đăng nhập macOS: xem mẫu launchd trong
 [AGENTS-SETUP.md](AGENTS-SETUP.md#optional-run-at-login-on-macos).
@@ -67,7 +91,7 @@ Trong cấu hình MCP của từng agent, đổi URL nano-brain từ cổng `310
 | Claude Code | `~/.claude.json` | `"nano-brain": {"type": "http", "url": "http://localhost:3101/mcp"}` (sửa mọi chỗ xuất hiện) |
 | Codex CLI | `~/.codex/config.toml` | `[mcp_servers.nano-brain]` → `url = "http://localhost:3101/mcp"` |
 | Pi | `~/.pi/agent/mcp.json` | `"nano-brain"` → `"url": "http://localhost:3101/mcp"` |
-| OpenCode | `~/.config/opencode/opencode.json` | `"nano-brain"` → `"url": "http://host.docker.internal:3101/mcp"` |
+| OpenCode | `~/.config/opencode/opencode.json` | `"nano-brain"` → `"url": "http://host.docker.internal:3101/mcp"` (chạy proxy với `--allowed-hosts host.docker.internal` như trên) |
 | Devin | theo nguồn mà `devin mcp list` báo | thường lấy từ `~/.claude.json`, nên sửa Claude Code là đủ |
 
 Sau khi sửa, mở lại phiên agent: phiên đang mở vẫn giữ kết nối cũ. Chi tiết

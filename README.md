@@ -60,6 +60,10 @@ go build -o nano-brain-observe ./cmd/nano-brain-observe
 2. Point an agent's nano-brain MCP URL at port 3101 instead of 3100, keeping
    the path and any `?workspace=` query. Per-agent instructions for Claude
    Code, Codex, Pi, OpenCode and Devin: [docs/AGENTS-SETUP.md](docs/AGENTS-SETUP.md).
+   If the URL uses `host.docker.internal`, start the proxy with
+   `--allowed-hosts host.docker.internal` even when its default loopback
+   listener is reachable; only add `--unsafe-expose-lan` if a non-loopback
+   bind is needed.
 
 3. Restart the agent session, use nano-brain as usual, then look at the log:
 
@@ -74,7 +78,8 @@ Vietnamese guide: [docs/HUONG-DAN.md](docs/HUONG-DAN.md).
 
 ## Options
 
-Each option can be set with a flag or an environment variable.
+All options have flags; only those with an environment variable listed below
+can also be set through the environment.
 
 | Flag | Environment variable | Default | Meaning |
 |---|---|---|---|
@@ -82,7 +87,24 @@ Each option can be set with a flag or an environment variable.
 | `--upstream` | `NANO_BRAIN_OBSERVE_UPSTREAM` | `http://127.0.0.1:3100` | nano-brain server to forward to |
 | `--dir` | `NANO_BRAIN_OBSERVE_DIR` | `~/.nano-brain-observe/logs` | Log directory (created with mode 0700) |
 | `--max-response-bytes` | `NANO_BRAIN_OBSERVE_MAX_RESPONSE_BYTES` | `262144` | Cap on the logged response body (256 KiB) |
+| `--allowed-hosts` | | empty | Comma-separated additional exact Host names/IPs (no ports or wildcards) |
+| `--unsafe-expose-lan` | | off | Explicitly allow a non-loopback listener, including wildcard binds |
 | `--version` | | | Print the version and exit |
+
+The proxy rejects requests unless their Host is `localhost`, a loopback IP
+(127/8 or `::1`), or an exact entry in `--allowed-hosts`. When Origin is sent,
+it must be an http(s) origin matching the request's Host, port and scheme;
+requests without Origin (such as CLI/MCP calls) work normally. Forwarded Host
+and scheme headers do not override these checks. Rejected calls are not logged.
+Binding outside loopback requires `--unsafe-expose-lan` and does **not** relax
+the Host check: Docker's `host.docker.internal` needs
+`--allowed-hosts host.docker.internal` even on a loopback listener. The proxy
+has **no authentication**:
+on a LAN listener, a client that supplies an allowed Host can access nano-brain
+and its private data. Prefer a dedicated interface and firewall restrictions.
+Without `--unsafe-expose-lan`, the listen address must use a literal loopback
+IP or exactly `localhost` (case-insensitive); other hostnames require opt-in
+even if they currently resolve to loopback.
 
 Output files are `<dir>/calls-YYYY-MM-DD.jsonl`, one per day, mode 0600.
 

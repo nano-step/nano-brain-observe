@@ -36,6 +36,7 @@ type Options struct {
 	Sink             record.Sink
 	MaxResponseBytes int         // cap for Record.Response; 0 => 256<<10
 	Logger           *log.Logger // for sink/internal errors; nil => log.Default()
+	AllowedHosts     []string    // additional exact hostnames/IPs, validated by ParseAllowedHosts
 }
 
 type handler struct {
@@ -43,6 +44,7 @@ type handler struct {
 	sink    record.Sink
 	maxResp int
 	log     *log.Logger
+	hosts   []string
 
 	mu      sync.Mutex
 	clients map[string]string // session id -> "name/version"
@@ -55,6 +57,7 @@ func New(opts Options) http.Handler {
 		sink:    opts.Sink,
 		maxResp: opts.MaxResponseBytes,
 		log:     opts.Logger,
+		hosts:   opts.AllowedHosts,
 		clients: map[string]string{},
 	}
 	if h.maxResp == 0 {
@@ -103,6 +106,10 @@ type call struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !allowedRequest(r, h.hosts) {
+		http.Error(w, "forbidden host or origin", http.StatusForbidden)
+		return
+	}
 	mcp := isMCPPath(r.URL.Path)
 	if mcp && r.Method == http.MethodGet {
 		// Long-lived server->client event stream: pass through, no record.
