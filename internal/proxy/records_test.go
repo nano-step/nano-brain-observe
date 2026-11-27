@@ -53,6 +53,21 @@ func deref(p *int) any {
 	return *p
 }
 
+func TestClientFromUserAgent(t *testing.T) {
+	tests := []struct{ ua, want string }{
+		{"Devin-CLI/3000.15.14 (darwin)", "Devin-CLI/3000.15.14"},
+		{"codex-mcp-client/0.172.0", "codex-mcp-client/0.172.0"},
+		{"  curl/8.4.0 extra", "curl/8.4.0"},
+		{"", ""},
+		{"   ", ""},
+	}
+	for _, tt := range tests {
+		if got := clientFromUserAgent(tt.ua); got != tt.want {
+			t.Errorf("clientFromUserAgent(%q) = %q, want %q", tt.ua, got, tt.want)
+		}
+	}
+}
+
 func TestSSEData(t *testing.T) {
 	in := "event: message\r\nid: a_0\r\ndata: {\"a\":1}\r\n\r\n: comment\ndata: line1\ndata:line2\n\ndata: {\"cut"
 	want := []string{`{"a":1}`, "line1\nline2", `{"cut`}

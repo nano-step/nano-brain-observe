@@ -22,7 +22,7 @@ const (
 type Record struct {
 	Time      time.Time `json:"ts"`
 	Kind      string    `json:"kind"`
-	Client    string    `json:"client,omitempty"`     // MCP clientInfo "name/version" when known
+	Client    string    `json:"client,omitempty"`     // MCP clientInfo "name/version", else the first User-Agent token
 	UserAgent string    `json:"user_agent,omitempty"` // HTTP User-Agent
 	SessionID string    `json:"session_id,omitempty"` // Mcp-Session-Id header when present
 	Workspace string    `json:"workspace,omitempty"`  // arguments.workspace, else ?workspace= query

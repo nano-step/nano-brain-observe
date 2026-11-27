@@ -120,6 +120,14 @@ Mỗi tool call là một dòng. Các trường chính:
 
 ## 5. Phân tích để cải thiện nano-brain
 
+Xem nhanh thống kê theo tool và theo client (mặc định 7 ngày gần nhất):
+
+```sh
+nano-brain-observe stats [-dir DIR] [-since 7d]
+```
+
+Khi MCP chạy không có session (stateless), `client` được lấy từ phần đầu của `User-Agent`. Các lần dò `/.well-known/*` trả 404 không được ghi log, vì chúng chỉ là nhiễu từ client dò OAuth.
+
 Số lần gọi theo tool:
 
 ```sh
