@@ -174,6 +174,9 @@ func (c *call) finish() {
 		return
 	}
 	c.done = true
+	if c.isProbe() {
+		return
+	}
 	for _, rec := range c.records(time.Since(c.start)) {
 		if err := c.h.sink.Write(rec); err != nil {
 			c.h.log.Printf("write record: %v", err)

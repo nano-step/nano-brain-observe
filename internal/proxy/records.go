@@ -3,6 +3,7 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 
@@ -153,6 +154,19 @@ func workspaceOf(args json.RawMessage) string {
 	return ws
 }
 
+// clientFromUserAgent returns the first product token of a User-Agent, the
+// fallback client name for stateless MCP calls that carry no session.
+func clientFromUserAgent(ua string) string {
+	token, _, _ := strings.Cut(strings.TrimSpace(ua), " ")
+	return token
+}
+
+// isProbe reports whether the call is a failed /.well-known/ discovery
+// request (OAuth metadata and the like), which is noise rather than usage.
+func (c *call) isProbe() bool {
+	return c.status == http.StatusNotFound && strings.Contains(c.req.URL.Path, "/.well-known/")
+}
+
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
@@ -186,6 +200,9 @@ func (c *call) records(latency time.Duration) []record.Record {
 	}
 	if sessionID != "" {
 		base.Client = c.h.client(sessionID)
+	}
+	if base.Client == "" {
+		base.Client = clientFromUserAgent(base.UserAgent)
 	}
 	if c.status >= 400 {
 		base.Status = record.StatusError

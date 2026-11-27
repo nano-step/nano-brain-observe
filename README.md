@@ -106,6 +106,18 @@ Without `--unsafe-expose-lan`, the listen address must use a literal loopback
 IP or exactly `localhost` (case-insensitive); other hostnames require opt-in
 even if they currently resolve to loopback.
 
+### Stats
+
+`nano-brain-observe stats [-dir DIR] [-since DURATION]` summarises the logged
+`mcp_tool` calls: per tool (calls, error, empty, p50/p95/max latency in ms) and
+per client (calls, error), busiest first. `-dir` defaults to the same log
+directory as the proxy; `-since` takes a Go duration or days (`36h`, `7d`) and
+defaults to `7d`. Malformed log lines are skipped and counted in the header.
+
+When a call carries no `Mcp-Session-Id` (stateless MCP), `client` falls back to
+the first token of the `User-Agent`. Failed (404) requests to `/.well-known/`
+paths are still proxied but not logged.
+
 Output files are `<dir>/calls-YYYY-MM-DD.jsonl`, one per day, mode 0600.
 
 ## What gets logged

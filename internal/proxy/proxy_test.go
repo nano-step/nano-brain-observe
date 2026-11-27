@@ -173,6 +173,7 @@ func TestSSEToolCall(t *testing.T) {
 	want := record.Record{
 		Time: r.Time, LatencyMs: r.LatencyMs, ResultCount: r.ResultCount,
 		Kind:          record.KindMCPTool,
+		Client:        "claude-code/2.0",
 		UserAgent:     "claude-code/2.0",
 		Workspace:     "ws1",
 		HTTPMethod:    "POST",
@@ -340,7 +341,7 @@ func TestClientFromInitialize(t *testing.T) {
 		t.Fatalf("client Mcp-Session-Id = %q", got)
 	}
 	do(t, http.MethodPost, base+"/mcp", toolCall(2, `{}`), map[string]string{"Mcp-Session-Id": "sess-1"})
-	do(t, http.MethodPost, base+"/mcp", toolCall(2, `{}`), map[string]string{"Mcp-Session-Id": "other"})
+	do(t, http.MethodPost, base+"/mcp", toolCall(2, `{}`), map[string]string{"Mcp-Session-Id": "other", "User-Agent": ""})
 
 	recs := sink.wait(t, 3)
 	if r := recs[0]; r.Kind != record.KindMCP || r.RPCMethod != "initialize" || r.SessionID != "sess-1" || r.Client != "claude-code/1.2.3" {
@@ -676,5 +677,82 @@ func TestLargeRequestBody(t *testing.T) {
 	}
 	if r.Kind != record.KindMCPTool || r.Tool != "memory_query" || r.Workspace != "w" {
 		t.Errorf("record kind=%q tool=%q workspace=%q", r.Kind, r.Tool, r.Workspace)
+	}
+}
+
+func TestClientUserAgentFallback(t *testing.T) {
+	msg, _ := toolResult(1, `{"results":[1]}`)
+	base, sink := start(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), `"initialize"`) {
+			w.Header().Set("Mcp-Session-Id", "sess-1")
+			io.WriteString(w, sse(`{"jsonrpc":"2.0","id":1,"result":{}}`))
+			return
+		}
+		io.WriteString(w, sse(msg))
+	}), 0)
+
+	post(t, base+"/mcp", `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"claude-code","version":"1.2.3"}}}`)
+	tests := []struct {
+		name, session, ua, want string
+	}{
+		{"session wins over user agent", "sess-1", "Devin-CLI/1 (darwin)", "claude-code/1.2.3"},
+		{"stateless uses user agent token", "", "Devin-CLI/3000.15.14 (darwin)", "Devin-CLI/3000.15.14"},
+		{"unknown session uses user agent", "other", "codex-mcp-client/0.172.0", "codex-mcp-client/0.172.0"},
+		{"no user agent stays empty", "", "", ""},
+	}
+	for _, tt := range tests {
+		header := map[string]string{"User-Agent": tt.ua}
+		if tt.session != "" {
+			header["Mcp-Session-Id"] = tt.session
+		}
+		do(t, http.MethodPost, base+"/mcp", toolCall(1, `{}`), header)
+	}
+	recs := sink.wait(t, len(tests)+1)
+	for i, tt := range tests {
+		if got := recs[i+1].Client; got != tt.want {
+			t.Errorf("%s: Client = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestWellKnownProbeDropped(t *testing.T) {
+	tests := []struct {
+		name, path string
+		status     int
+		logged     bool
+	}{
+		{"well-known 404 dropped", "/.well-known/oauth-authorization-server", http.StatusNotFound, false},
+		{"nested well-known 404 dropped", "/mcp/.well-known/oauth-protected-resource", http.StatusNotFound, false},
+		{"well-known 200 kept", "/.well-known/oauth-authorization-server", http.StatusOK, true},
+		{"normal 404 kept", "/api/v1/missing", http.StatusNotFound, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base, sink := start(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/sentinel" {
+					return
+				}
+				w.WriteHeader(tt.status)
+			}), 0)
+			resp, _ := do(t, http.MethodGet, base+tt.path, "", nil)
+			if resp.StatusCode != tt.status {
+				t.Fatalf("proxied status = %d, want %d", resp.StatusCode, tt.status)
+			}
+			do(t, http.MethodGet, base+"/sentinel", "", nil)
+			want := 1
+			if tt.logged {
+				want = 2
+			}
+			recs := sink.wait(t, want)
+			got := false
+			for _, r := range recs {
+				got = got || r.Path == tt.path
+			}
+			if got != tt.logged {
+				t.Errorf("path %q logged = %v, want %v", tt.path, got, tt.logged)
+			}
+		})
 	}
 }

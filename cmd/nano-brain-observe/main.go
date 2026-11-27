@@ -40,13 +40,16 @@ func envOr(key, fallback string) string {
 }
 
 func run() error {
+	if len(os.Args) > 1 && os.Args[1] == "stats" {
+		return runStats(os.Args[2:], os.Stdout)
+	}
 	maxDefault, err := strconv.Atoi(envOr("NANO_BRAIN_OBSERVE_MAX_RESPONSE_BYTES", "262144"))
 	if err != nil {
 		return fmt.Errorf("NANO_BRAIN_OBSERVE_MAX_RESPONSE_BYTES: %w", err)
 	}
 	listen := flag.String("listen", envOr("NANO_BRAIN_OBSERVE_LISTEN", "127.0.0.1:3101"), "address to listen on")
 	upstreamFlag := flag.String("upstream", envOr("NANO_BRAIN_OBSERVE_UPSTREAM", "http://127.0.0.1:3100"), "nano-brain base URL")
-	dirFlag := flag.String("dir", envOr("NANO_BRAIN_OBSERVE_DIR", "~/.nano-brain-observe/logs"), "directory for the JSONL call logs")
+	dirFlag := flag.String("dir", envOr("NANO_BRAIN_OBSERVE_DIR", defaultDir), "directory for the JSONL call logs")
 	allowedHosts := flag.String("allowed-hosts", "", "comma-separated exact additional Host names or IPs")
 	unsafeExposeLAN := flag.Bool("unsafe-expose-lan", false, "allow listening on non-loopback interfaces (unauthenticated)")
 	maxResponse := flag.Int("max-response-bytes", maxDefault, "bytes of each response kept in the log")
