@@ -101,3 +101,16 @@ func TestRunStats(t *testing.T) {
 		t.Errorf("tools not sorted by calls desc:\n%s", got)
 	}
 }
+
+func TestSafe(t *testing.T) {
+	for in, want := range map[string]string{
+		"codex/1":                "codex/1",
+		"evil\x1b]0;pwned\x07/1": "evil]0;pwned/1",
+		"tab\there":              "tabhere",
+		strings.Repeat("a", 70):  strings.Repeat("a", 60),
+	} {
+		if got := safe(in); got != want {
+			t.Errorf("safe(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

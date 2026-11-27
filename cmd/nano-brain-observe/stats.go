@@ -14,6 +14,7 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode"
 
 	"github.com/nano-step/nano-brain-observe/internal/record"
 )
@@ -142,7 +143,7 @@ func (s summary) print(w io.Writer, window string) {
 	for _, k := range sortedKeys(s.tools) {
 		c := s.tools[k]
 		sort.Slice(c.latencies, func(i, j int) bool { return c.latencies[i] < c.latencies[j] })
-		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\n", k, c.calls, c.errors, c.empty,
+		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%d\t%d\t%d\n", safe(k), c.calls, c.errors, c.empty,
 			percentile(c.latencies, 50), percentile(c.latencies, 95), c.latencies[len(c.latencies)-1])
 	}
 	tw.Flush()
@@ -151,7 +152,7 @@ func (s summary) print(w io.Writer, window string) {
 	tw = tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "CLIENT\tCALLS\tERROR")
 	for _, k := range sortedKeys(s.clients) {
-		fmt.Fprintf(tw, "%s\t%d\t%d\n", k, s.clients[k].calls, s.clients[k].errors)
+		fmt.Fprintf(tw, "%s\t%d\t%d\n", safe(k), s.clients[k].calls, s.clients[k].errors)
 	}
 	tw.Flush()
 }
@@ -181,4 +182,19 @@ func runStats(args []string, out io.Writer) error {
 	}
 	s.print(out, *sinceFlag)
 	return nil
+}
+
+// safe strips control characters and caps length: tool and client names come
+// from request data, and a raw escape sequence would be run by the terminal.
+func safe(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, s)
+	if r := []rune(s); len(r) > 60 {
+		return string(r[:60])
+	}
+	return s
 }
