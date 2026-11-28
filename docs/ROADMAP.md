@@ -5,7 +5,7 @@
 ## Position
 - observe is an opt-in tool for quality R&D: it records what agents ask nano-brain and what they get back, so nano-brain's weak spots can be found.
 - It is **not** the audit log or the metrics system. A client can connect to nano-brain directly and skip the proxy, so audit (E4) and `/metrics` (E0) live inside nano-brain.
-- What stays unique to observe: capturing payloads (args and responses) for analysis. In an enterprise deployment that is off by default and turned on per workspace.
+- What stays unique to observe: capturing full responses and untruncated args for analysis (nano-brain's telemetry keeps only truncated args, #678). In an enterprise deployment that is off by default and turned on per workspace.
 
 ## Done
 - ✅ Logging reverse proxy (MCP + REST) writing daily JSONL files
