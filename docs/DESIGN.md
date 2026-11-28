@@ -11,8 +11,9 @@ not, nothing changes.
 
 ## Facts this is built on (measured)
 
-- nano-brain logs only 3 REST search handlers to `telemetry_logs`; the 19 MCP
-  tools record nothing.
+- nano-brain logs 3 REST search handlers and every MCP `tools/call` (#678) to
+  `telemetry_logs`, without caller identity. (Updated 2026-11-28; at design time
+  the MCP tools recorded nothing.)
 - Agents in use (Claude Code, Codex, Pi, OpenCode, Devin) all reach nano-brain
   over streamable HTTP at `:3100/mcp`.
 - `POST /mcp` answers with `Content-Type: text/event-stream` (`data: {jsonrpc...}`),
